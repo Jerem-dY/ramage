@@ -18,6 +18,7 @@ pub enum Search {
     Breadth = 1
 }
 
+
 #[pyclass(subclass)]
 pub struct Tree {
 
@@ -240,6 +241,77 @@ impl Tree {
             Ok(None)
         }
         
+    }
+
+
+    fn _get_property<'py>(&self, py: Python<'py>, i: usize, property: &Property) -> PyResult<Vec<Py<PyAny>>>{
+
+        let prop = match property{
+            Property::Children => self._children[i].clone().iter().map(|x| x.to_object(py)).collect(),
+            Property::Transitions => self._transitions[i].to_vec().iter().map(|x| {
+                if let Some(val) = x {
+                    val.to_object(py)
+                }
+                else {
+                    None::<Py<PyAny>>.to_object(py)
+                }
+            }).collect(),
+            Property::Parents => {
+                if let Some(val) = self._parents[i].to_owned() {
+                    vec![val.to_object(py)]
+                } 
+                else {
+                    vec![None::<Py<PyAny>>.to_object(py)]
+                }
+            },
+            Property::Values => {
+                
+                if let Some(val) = &self._values[i] {
+                    vec![val.to_object(py)]
+                } 
+                else {
+                    vec![None::<Py<PyAny>>.to_object(py)]
+                }
+            },                            
+        };
+
+        Ok(prop)
+    }
+
+    #[pyo3(signature=(item, count = None, property = &Property::Transitions))]
+    fn index<'py>(&self, py: Python<'py>, item: &Bound<'_, PyAny>, count: Option<usize>, property: &Property) -> PyResult<Vec<usize>> {
+
+        let mut output = Vec::<usize>::new();
+
+        for i in 0..self._size {
+
+            if let Some(c) = count {
+                if output.len() >= c {
+                    break;
+                }
+            }
+
+            for el in self._get_property(py, i, property).unwrap() {
+
+                if let Ok(b) = el.bind(py).eq(item.to_object(py)) {
+                    //println!("Comparing {:?} to {:?}: {b}", el, obj);
+                    if b {
+                        output.push(i);
+                        break;
+                    }
+                }
+                else {
+                    todo!()
+                }
+            }
+
+
+
+        }
+        
+        
+        Ok(output)
+
     }
 
     

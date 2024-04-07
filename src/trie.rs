@@ -9,17 +9,20 @@ pub struct Trie {}
 
 
 impl Trie {
-    fn __fetch<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> (PyResult<Option<Py<PyAny>>>, bool) {
+    fn __fetch<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> (PyResult<Vec<Option<Py<PyAny>>>>, bool) {
         
         let mut i = 0usize;
         let super_ = self_.as_ref();
+
+        let mut values = Vec::<Option<Py<PyAny>>>::new();
 
         for el in key {
 
             if let Ok(b) = &super_._transitions[i].to_object(py).bind(py).contains(&el) {
 
                 if *b {
-                    i = super_._children[i][super_._transitions[i].iter().position(|r| if let Some(f) = r {if let Ok(b) = f.bind(py).eq(&el) {b} else {false}} else {false}).unwrap()]
+                    i = super_._children[i][super_._transitions[i].iter().position(|r| if let Some(f) = r {if let Ok(b) = f.bind(py).eq(&el) {b} else {false}} else {false}).unwrap()];
+                    values.push(super_._values[i].to_owned());
                 }
                 else {
                     return (Err(PyKeyError::new_err("Key is not present in the tree!")), false);
@@ -28,7 +31,7 @@ impl Trie {
             }
         }
 
-        (Ok(super_._values[i].to_owned()), true)
+        (Ok(values), true)
     }
 }
 
@@ -74,7 +77,29 @@ impl Trie {
 
     fn __getitem__<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> PyResult<Option<Py<PyAny>>> {
 
-        Trie::__fetch(self_, py, key).0
+
+        let res = Trie::__fetch(self_, py, key).0;
+
+        if let Ok(vec) = res {
+            Ok(vec.last().unwrap().to_owned())
+        }
+        else {
+            Err(res.err().unwrap())
+        }
+        
+    }
+
+    fn get_values<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> PyResult<Vec<Option<Py<PyAny>>>> {
+
+
+        let res = Trie::__fetch(self_, py, key).0;
+
+        if let Ok(vec) = res {
+            Ok(vec.to_owned())
+        }
+        else {
+            Err(res.err().unwrap())
+        }
         
     }
 
