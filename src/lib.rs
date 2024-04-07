@@ -1,7 +1,5 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::*;
-//use pyo3::types::{PyAny, Bound};
-
 
 #[pyclass]
 struct Tree {
@@ -16,7 +14,9 @@ struct Tree {
     _parents: Vec<Option<usize>>,
 
     #[pyo3(get, name = "values")]
-    _values: Vec<Option<Py<PyAny>>>
+    _values: Vec<Option<Py<PyAny>>>,
+
+    _size: usize
 }
 
 #[pymethods]
@@ -28,8 +28,13 @@ impl Tree {
             _children: Vec::<Vec<usize>>::new(),
             _transitions: Vec::<Vec<Py<PyAny>>>::new(),
             _parents: Vec::<Option<usize>>::new(),
-            _values: Vec::<Option<Py<PyAny>>>::new()
+            _values: Vec::<Option<Py<PyAny>>>::new(),
+            _size: 0
         }
+    }
+
+    fn __len__(&self) -> PyResult<usize> {
+        Ok(self._size)
     }
 
     #[pyo3(signature=(parent, conns, trans, value, parent_transition))]
@@ -54,6 +59,8 @@ impl Tree {
         self._transitions.push(trans);
         self._parents.push(parent);
         self._values.push(Some(value.clone().unbind()));
+
+        self._size += 1;
 
         Ok(index+1)
     }
@@ -95,6 +102,7 @@ impl Tree {
                 todo!()
             }
 
+            self._size -= 1;
             Ok(())
         }
         else {
