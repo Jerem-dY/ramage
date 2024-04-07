@@ -147,36 +147,11 @@ impl Tree {
 
             //println!("{i}");
 
-            let prop = match property{
-                Property::Children => self._children[i].clone().iter().map(|x| x.to_object(py)).collect(),
-                Property::Transitions => self._transitions[i].to_vec().iter().map(|x| {
-                    if let Some(val) = x {
-                        val.to_object(py)
-                    }
-                    else {
-                        None::<Py<PyAny>>.to_object(py)
-                    }
-                }).collect(),
-                Property::Parents => {
-                    if let Some(val) = self._parents[i].to_owned() {
-                        vec![val.to_object(py)]
-                    } 
-                    else {
-                        vec![None::<Py<PyAny>>.to_object(py)]
-                    }
-                },
-                Property::Values => {
-                    
-                    if let Some(val) = &self._values[i] {
-                        vec![val.to_object(py)]
-                    } 
-                    else {
-                        vec![None::<Py<PyAny>>.to_object(py)]
-                    }
-                },                            
-            };
-            
-            let prop = prop.iter().map(|x| x.bind(py)).collect::<Vec<&Bound<PyAny>>>();
+            let prop = self._get_property(py, i, property).unwrap();
+                                                        
+            let prop = prop.iter()
+                                                        .map(|x| x.bind(py))
+                                                        .collect::<Vec<&Bound<PyAny>>>();
 
             //println!("{:?}", prop);
 
