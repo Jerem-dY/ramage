@@ -1,6 +1,5 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::*;
-use pyo3::types::PyList;
 //use pyo3::types::{PyAny, Bound};
 
 
@@ -58,7 +57,56 @@ impl Tree {
 
         Ok(index+1)
     }
+
+    /// Function to remove a node from the graph.
+    fn _del_node(&mut self, i: usize) -> PyResult<()> {
+
+        if let (Some(p), (ch_p, ch_c)) = (self._parents.get_mut(i), self._children.split_at_mut(i)) {
+
+            if let Some(parent) = *p {
+
+                // Setting the parent of the detached node to None
+                *p = None;
+
+                //println!("Parent is {parent} for node {i}, with {:?} (before i) and {:?} (from i to the end)", ch_p, ch_c);
+
+                if let (Some(par_ch), Some(ch)) = (ch_p.get_mut(parent), ch_c.get_mut(0)) {
+
+                    //println!("Erasing every {i} from {parent}'s children");
+                    par_ch.retain(|value| *value != i);
+
+                    //println!("Adding {:?} to parent's children", ch);
+                    par_ch.extend(ch.to_owned());
+
+                    for child in ch.iter_mut() {
+                        //println!("Setting {child}'s parent to {parent}");
+                        self._parents[*child] = Some(parent);
+                    }
+                    
+                    // Erasing children references of deleted node
+                    ch.clear();
+                }
+                else {
+                    todo!()
+                }
+                
+            }
+            else {
+                todo!()
+            }
+
+            Ok(())
+        }
+        else {
+            Err(PyIndexError::new_err("Specified node doesn't exist!"))
+        }
+
+    }
+
+
+    
 }
+
 
 /// A Python module implemented in Rust.
 #[pymodule]
