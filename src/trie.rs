@@ -8,6 +8,30 @@ use pyo3::exceptions::*;
 pub struct Trie {}
 
 
+impl Trie {
+    fn __fetch<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> (PyResult<Option<Py<PyAny>>>, bool) {
+        
+        let mut i = 0usize;
+        let super_ = self_.as_ref();
+
+        for el in key {
+
+            if let Ok(b) = &super_._transitions[i].to_object(py).bind(py).contains(&el) {
+
+                if *b {
+                    i = super_._children[i][super_._transitions[i].iter().position(|r| if let Some(f) = r {if let Ok(b) = f.bind(py).eq(&el) {b} else {false}} else {false}).unwrap()]
+                }
+                else {
+                    return (Err(PyKeyError::new_err("Key is not present in the tree!")), false);
+                }
+
+            }
+        }
+
+        (Ok(super_._values[i].to_owned()), true)
+    }
+}
+
 #[pymethods]
 impl Trie {
 
@@ -45,25 +69,16 @@ impl Trie {
         Ok(())
     }
 
+
+    
+
     fn __getitem__<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> PyResult<Option<Py<PyAny>>> {
 
-        let mut i = 0usize;
-        let super_ = self_.as_ref();
+        Trie::__fetch(self_, py, key).0
+        
+    }
 
-        for el in key {
-
-            if let Ok(b) = &super_._transitions[i].to_object(py).bind(py).contains(&el) {
-
-                if *b {
-                    i = super_._children[i][super_._transitions[i].iter().position(|r| if let Some(f) = r {if let Ok(b) = f.bind(py).eq(&el) {b} else {false}} else {false}).unwrap()]
-                }
-                else {
-                    return Err(PyKeyError::new_err("Key is not present in the tree!"));
-                }
-
-            }
-        }
-
-        Ok(super_._values[i].to_owned())
+    fn __contains__<'py>(self_: PyRef<'_, Self>, py: Python<'py>, key: &Bound<'_, PyList>) -> PyResult<bool> {
+        Ok(Trie::__fetch(self_, py, key).1)
     }
 }
