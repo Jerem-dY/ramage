@@ -41,14 +41,18 @@ pub struct Tree {
 impl Tree {
 
     #[new]
-    pub fn new() -> Self {
-        Tree{
+    pub fn new<'py>(py: Python<'py>) -> Self {
+        let mut tr = Tree{
             _children: Vec::<Vec<usize>>::new(),
             _transitions: Vec::<Vec<Option<Py<PyAny>>>>::new(),
             _parents: Vec::<Option<usize>>::new(),
             _values: Vec::<Option<Py<PyAny>>>::new(),
             _size: 0
-        }
+        };
+
+        tr._add_node(None, vec![], vec![], None::<Py<PyAny>>.to_object(py).bind(py), None).unwrap();
+
+        tr
     }
 
     pub fn __len__(&self) -> PyResult<usize> {
@@ -134,6 +138,7 @@ impl Tree {
     }
 
     /// Search value using a depth first algorithm.
+    #[pyo3(signature=(item, all = false, property = &Property::Transitions, method = &Search::Depth))]
     pub fn search<'py>(&self, py: Python<'py>, item: &Bound<'_, PyAny>, all: bool, property: &Property, method: &Search) -> PyResult<Option<PyObject>> {
 
         let mut stack = VecDeque::from([0usize]);
@@ -215,6 +220,82 @@ impl Tree {
         else {
             Ok(None)
         }
+        
+    }
+
+
+    pub fn leaves<'py>(&self) -> PyResult<Vec<usize>> {
+
+        let mut output: Vec<usize> = Vec::new();
+
+        for i in 0..self._children.len() {
+            if self._children[i].len() == 0 && self._parents[i] != None {
+                output.push(i);
+            }
+        }
+
+        Ok(output)
+    }
+
+    #[pyo3(signature=(to, from = 0, property = None))]
+    pub fn path_to_node<'py>(&self, py: Python<'py>, to: usize, from: usize, property: Option<&Property>) -> PyResult<Option<Vec<Option<Py<PyAny>>>>> {
+
+        let mut buffer: VecDeque<Option<Py<PyAny>>> = VecDeque::new();
+        let mut idx = to;
+
+        while idx != from {
+
+            if let Some(i) = self._parents[idx] {
+
+                match property {
+                    Some(Property::Children) => todo!(),
+                    Some(Property::Transitions) => {
+                        for j in 0..self._children[i].len() {
+                            if self._children[i][j] == idx {
+
+                                buffer.push_front(self._transitions[i][j].to_owned());
+                                break;
+                            }
+                        }
+                    },
+                    Some(Property::Parents) => buffer.push_front(Some(self._parents[idx].to_object(py))),
+                    Some(Property::Values) => buffer.push_front(self._values[idx].to_owned()),
+                    None => buffer.push_front(Some(idx.to_object(py)))
+                }
+
+
+                idx = i;
+            }
+            else {
+                buffer.clear();
+                break;
+            }
+        }
+
+        if buffer.len() > 0 {
+            Ok(Some(buffer.into()))
+        }
+        else {
+            Ok(None)
+        }
+    }
+
+    #[pyo3(signature=(from = 0, property = None))]
+    pub fn list<'py>(&self, py: Python<'py>, from: usize, property: Option<&Property>) -> PyResult<Vec<Vec<Option<Py<PyAny>>>>> {
+
+        let mut output: Vec<Vec<Option<Py<PyAny>>>> = Vec::new();
+        
+        let leaves = self.leaves().unwrap();
+
+        for l in leaves {
+
+            if let Some(path) = self.path_to_node(py, l, from, property).unwrap() {
+                output.push(path);
+            }
+            
+        }
+
+        Ok(output)
         
     }
 

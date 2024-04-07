@@ -40,10 +40,7 @@ impl Trie {
 
     #[new]
     fn new<'py>(py: Python<'py>) -> (Self, Tree) {
-
-        let mut tr = Tree::new();
-        tr._add_node(None, vec![], vec![], None::<Py<PyAny>>.to_object(py).bind(py), None).unwrap();
-        (Trie {  }, tr)
+        (Trie {  }, Tree::new(py))
     }
 
 
