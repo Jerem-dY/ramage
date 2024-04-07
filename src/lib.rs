@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::iter::zip;
 
 use pyo3::prelude::*;
@@ -9,6 +10,12 @@ enum Property {
     Transitions = 1,
     Parents = 2,
     Values = 3
+}
+
+#[pyclass]
+enum Search {
+    Depth = 0,
+    Breadth = 1
 }
 
 #[pyclass]
@@ -126,12 +133,16 @@ impl Tree {
     }
 
     /// Search value using a depth first algorithm.
-    fn depth_first<'py>(&self, py: Python<'py>, item: &Bound<'_, PyAny>, all: bool, property: &Property) -> PyResult<Option<PyObject>> {
+    fn search<'py>(&self, py: Python<'py>, item: &Bound<'_, PyAny>, all: bool, property: &Property, method: &Search) -> PyResult<Option<PyObject>> {
 
-        let mut stack = vec![0];
+        let mut stack = VecDeque::from([0usize]);
         let mut indices = Vec::<usize>::new();
 
-        while let Some(i) = stack.pop() {
+        while let Some(i) = match method {
+            Search::Depth => stack.pop_back(),
+            Search::Breadth => stack.pop_front()
+            
+        } {
 
             //println!("{i}");
 
@@ -241,5 +252,6 @@ fn ramage(m: &Bound<'_, PyModule>) -> PyResult<()> {
     //m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
     m.add_class::<Tree>()?;
     m.add_class::<Property>()?;
+    m.add_class::<Search>()?;
     Ok(())
 }
