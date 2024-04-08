@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 use pyo3::exceptions::*;
 
-#[pyclass(extends=Tree)]
+#[pyclass(extends=Tree, module="ramage")]
 pub struct Trie {}
 
 

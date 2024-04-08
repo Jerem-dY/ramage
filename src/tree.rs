@@ -4,7 +4,7 @@ use std::iter::zip;
 use pyo3::prelude::*;
 use pyo3::exceptions::*;
 
-#[pyclass]
+#[pyclass(module="ramage")]
 pub enum Property {
     Children = 0,
     Transitions = 1,
@@ -12,14 +12,14 @@ pub enum Property {
     Values = 3
 }
 
-#[pyclass]
+#[pyclass(module="ramage")]
 pub enum Search {
     Depth = 0,
     Breadth = 1
 }
 
 
-#[pyclass(subclass)]
+#[pyclass(subclass, module="ramage")]
 pub struct Tree {
 
     #[pyo3(get, name = "children")]
@@ -77,7 +77,9 @@ impl Tree {
                 
             }
             else {
-                return Err(PyIndexError::new_err("Parent should point to a valid node!"));
+                let len = self._children.len();
+                let size = self._size;
+                return Err(PyIndexError::new_err(format!("Parent '{p}' should point to a valid node, but no children and/or transitions could be found (tree length: {len}, for true size {size})!")));
             }
         }
 
@@ -145,8 +147,8 @@ impl Tree {
         let mut indices = Vec::<usize>::new();
 
         while let Some(i) = match method {
-            Search::Depth => stack.pop_back(),
-            Search::Breadth => stack.pop_front()
+            Search::Depth => stack.pop_front(),
+            Search::Breadth => stack.pop_back()
             
         } {
 
@@ -297,6 +299,32 @@ impl Tree {
 
         Ok(output)
         
+    }
+
+    pub fn subtree<'py>(&self, py: Python<'py>, root: usize) -> PyResult<Py<Self>> {
+
+        let mut queue: VecDeque<usize> = VecDeque::from(vec![root]);
+        let mut nt = Self::new(py);
+
+        nt._transitions[0] = self._transitions[root].to_owned();
+        nt._values[0] = self._values[root].to_owned();
+
+        let mut cmptr = 0usize;
+        while let Some(i) = queue.pop_back() {
+
+            for ch in self._children[i].to_owned() {
+                queue.push_back(ch);
+
+                if let Err(e) = nt._add_node(Some(cmptr), vec![], self._transitions[ch].to_owned(), self._values[ch].as_ref().unwrap().bind(py), None) {
+                    return Err(e);
+                }
+                else {
+                    cmptr += 1;
+                }
+            }
+        }
+
+        Ok(Py::new(py, nt).unwrap())
     }
 
 
